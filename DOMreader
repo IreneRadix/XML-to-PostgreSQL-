@@ -9,9 +9,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-
+import java.util.*;
 
 
 public class DOMreader {
@@ -21,6 +19,8 @@ public class DOMreader {
     private DocumentBuilder builder;
 
     private Document doc;
+
+    public HashMap<String, ArrayList<String>> tables;
 
     public DOMreader(String filepath) throws ParserConfigurationException, SAXException, IOException {
         // Получение фабрики, чтобы после получить билдер документов.
@@ -32,6 +32,8 @@ public class DOMreader {
         // Запарсили XML, создав структуру Document. Теперь у нас есть доступ ко всем элементам, каким нам нужно.
         this.doc = builder.parse(filepath);
 
+        this.tables = new HashMap<String, ArrayList<String>>();
+
     }
     public void m(){
         Node root = doc.getChildNodes().item(0);
@@ -40,8 +42,20 @@ public class DOMreader {
         System.out.println(root.getNodeName());
         NodeList childNode = root.getChildNodes();
         for (int i = 0; i < childNode.getLength(); i++) {
-            System.out.println(childNode.item(i).getNodeName());
+            if (childNode.item(i).getNodeType() == Node.ELEMENT_NODE) {
+                System.out.println(childNode.item(i).getNodeName());
+                System.out.println(childNode.item(i).getChildNodes().item(0).getNodeValue());
+                //System.out.println(childNode.item(i).getTextContent());
+            }
+            else if (childNode.item(i).getNodeType() == Node.TEXT_NODE) {
+                //System.out.println(childNode.item(i).getNodeName());
+                //System.out.println(childNode.item(i).getNodeValue());
+            }
+            System.out.println("Обход дерева в ширину:");
+            bfs(root);
+            return;
         }
+
 /*
         HashMap<String, ArrayList> employees = new HashMap<String, ArrayList>();
         // Получение списка всех элементов employee внутри корневого элемента (getDocumentElement возвращает ROOT элемент XML файла).
@@ -62,5 +76,74 @@ public class DOMreader {
             System.out.println(String.format("Информации о сотруднике: имя - %s, должность - %s.", employee.getName(), employee.getJob()));
     */}
 
+    private void bfs(Node root) {
+        AbstractSet<String> visited = new TreeSet<String>();
+        ArrayDeque<Node> queue = new ArrayDeque<>();
+        visited.add(root.getNodeName());
+        queue.add(root);
+        while (!queue.isEmpty())
+        {
+            Node cur = queue.poll();
+            //Хорошо бы найти какой-то универсальный iterable, в который можно запихнуть и аттрибуты, и дочерние узлы
+            for (int i = 0; i < cur.getChildNodes().getLength(); i++)
+            {
 
-}
+                if (!visited.contains(cur.getChildNodes().item(i).getNodeName()))
+                {
+                    visited.add(cur.getChildNodes().item(i).getNodeName());
+                    queue.add(cur.getChildNodes().item(i));
+                    //this.tables.put(cur.getParentNode().getNodeName(), this.tables.getOrDefault(cur.getParentNode().getNodeName(), new ArrayList<>()).add(cur.getNodeName()) );
+
+                    if (cur.getAttributes().getLength() > 0)
+                    {
+                        //System.out.println(cur.getNodeName() + " аттрибуты:");
+                        ArrayList<String>colNames = new ArrayList<>();
+                        colNames.add(cur.getNodeName()+"_id");
+
+                        for (int attr = 0; attr < cur.getAttributes().getLength(); attr++)
+                            colNames.add(cur.getAttributes().item(attr).getNodeName());
+                            //System.out.println(cur.getAttributes().item(attr).getNodeName());
+                        //System.out.println(cur.getNodeName() + " всё");
+                        this.tables.put(cur.getNodeName(), colNames);
+                    }
+
+                    if (cur.getChildNodes().getLength() > 0)
+                    {
+                        TreeSet<String> colNames = new TreeSet<>();
+                        //colNames.add(cur.getNodeName()+"_id");
+                        for (int child = 0; child < cur.getChildNodes().getLength(); child++)
+                            if (cur.getChildNodes().item(child).getNodeType() != Node.TEXT_NODE)
+                                colNames.add(cur.getChildNodes().item(child).getNodeName());
+                        //System.out.println(cur.getAttributes().item(attr).getNodeName());
+                        //System.out.println(cur.getNodeName() + " всё");
+                        this.tables.put(cur.getNodeName(), new ArrayList<String>(colNames));
+                    }
+                }
+            }
+
+
+                //пока только вывести узлы с аттрибутами, потом уже создавать из них таблицы
+
+        }
+    }
+
+    public void showTables(){
+        // дописать вывод таблиц
+        // позже это должно использоваться для вывода предпдолагаемой структуры базы данных
+        /*Старая версия:
+
+        for (String table_name: this.tables.keySet()) {
+            String key = table_name.toString();
+            String value = this.tables.get(table_name).toString();
+            System.out.println(key + " " + value);
+        }*/
+        this.tables.forEach((key, value) -> System.out.println(key + " " + value));
+
+    }
+
+
+
+    }
+
+
+
